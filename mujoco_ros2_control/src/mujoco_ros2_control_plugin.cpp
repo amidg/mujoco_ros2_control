@@ -83,6 +83,13 @@ MujocoRos2Control::MujocoRos2Control(rclcpp::Node::SharedPtr & node) : nh_(node)
 
   init_controller_manager();
 
+  // create reset pose service
+  reset_pose_srv_ = nh_->create_service<std_srvs::srv::Empty>(
+      "~/reset_pose",
+      std::bind(
+          &MujocoRos2Control::resetPoseCallback,
+          this, std::placeholders::_1, std::placeholders::_2));
+
   // Start MuJoCo
   mj_resetData(mujoco_model_, mujoco_data_);
 
@@ -138,6 +145,11 @@ void MujocoRos2Control::render()
   }
 }
 
+void MujocoRos2Control::resetPoseCallback(
+  const std_srvs::srv::Empty::Request::SharedPtr, std_srvs::srv::Empty::Response::SharedPtr) {
+  reset_req_.store(true, std::memory_order_release);
+}
+
 void MujocoRos2Control::update()
 {
   while (mj_vis_.sim->run) {
@@ -155,6 +167,18 @@ void MujocoRos2Control::update()
       publish_sim_time();
       rclcpp::Time sim_time_ros = rclcpp::Time((int64_t)(mujoco_data_->time * 1e+9), RCL_ROS_TIME);
       rclcpp::Duration sim_period = sim_time_ros - last_update_sim_time_ros_;
+
+      // if reset was requested
+      {
+      std::unique_lock<std::mutex> guard(mjdata_mtx_, std::try_to_lock);
+      if (guard.owns_lock()) {
+        if (reset_req_.exchange(false, std::memory_order_acq_rel)) {
+            //std::lock_guard<std::mutex> guard(mjdata_mtx_);
+            mj_resetData(mujoco_model_, mujoco_data_);
+            mj_forward(mujoco_model_, mujoco_data_);
+        }
+      }
+      }
 
       // check if we should update the controllers
       if (sim_period >= control_period_) {

@@ -87,6 +87,7 @@
 #include "std_msgs/msg/float64_multi_array.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
+#include <std_srvs/srv/empty.hpp>
 
 // URDF
 #include "urdf/urdf/model.h"
@@ -219,6 +220,9 @@ namespace mujoco_ros2_control
          */
         void registerSensors();
 
+        void resetPoseCallback(const std_srvs::srv::Empty::Request::SharedPtr,
+                         std_srvs::srv::Empty::Response::SharedPtr);
+
         std::shared_ptr<rclcpp::Node> nh_; ///< ROS2 node handle
 
         // Parameters from ROS2 using generate_parameter_library
@@ -256,6 +260,10 @@ namespace mujoco_ros2_control
         mjData mjdata_to_render_{}; ///< Pointer to the data to be rendered, non-RT
         std::mutex mjdata_mtx_; ///< Mutex protecting mjdata
         std::atomic<bool> has_new_mjdata_{false};
+
+        // reset code
+        std::atomic_bool reset_req_{false};
+        rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_pose_srv_;
 
 #ifdef USE_LIBSIMULATE
         mujoco_simulate_gui::MujocoSimulateGui& mj_vis_ = mujoco_simulate_gui::MujocoSimulateGui::getInstance(); ///< MuJoCo visualizer object

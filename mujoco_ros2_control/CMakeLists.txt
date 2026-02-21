@@ -25,6 +25,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
     ament_cmake
     rclcpp
     std_msgs
+    std_srvs
     geometry_msgs
     rosgraph_msgs
     controller_manager
@@ -131,6 +132,7 @@ ament_target_dependencies(${PROJECT_NAME}
     controller_manager
     hardware_interface
     rclcpp
+    std_srvs
     urdf
     realtime_tools
     cv_bridge
