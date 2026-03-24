@@ -174,8 +174,17 @@ void MujocoRos2Control::update()
       if (guard.owns_lock()) {
         if (reset_req_.exchange(false, std::memory_order_acq_rel)) {
             //std::lock_guard<std::mutex> guard(mjdata_mtx_);
+            // Preserve the current simulation time so the clock stays monotonically
+            // increasing across the reset.  Resetting to t=0 causes every TF
+            // consumer (rviz, robot_state_publisher, camera TF publishers, …) to
+            // receive transforms stamped in the past relative to their cached buffers,
+            // producing TF_OLD_DATA floods and a visible delay before the robot
+            // reappears.  With a monotonic clock sim_period stays positive, controller
+            // updates resume immediately, and no TF buffer needs to be flushed.
+            const mjtNum saved_time = mujoco_data_->time;
             mj_resetData(mujoco_model_, mujoco_data_);
             mj_forward(mujoco_model_, mujoco_data_);
+            mujoco_data_->time = saved_time;
         }
       }
       }
